@@ -200,7 +200,12 @@ class Graph {
           float value = row.getFloat(columnTitle);
           
           float rounded_Max = ((ceil(MaxForColumn(selectedColumn))+9)/10)*10;
-          stroke(lerpColor(red, yellow, value/rounded_Max));
+          if (DimensionDirection[selectedColumn] < 0 ) {
+            stroke(lerpColor(red, yellow, value/rounded_Max));
+          } else {
+            
+            stroke(lerpColor(yellow, red, value/rounded_Max));
+          }
           
         }
          DrawLine(l);
