@@ -5,14 +5,18 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.HashMap;
 
-final float PIXELWIDTH_PER_CHAR = 6.5;
-final float PIXELHEIGHT_PER_CHAR = 8;
+final float PIXELWIDTH_PER_CHAR = 12;
+final float PIXELHEIGHT_PER_CHAR = 12;
 List<Float> bucketPos;
 class Graph {
   
   Table table;
   int numRows = 0;
   int[] DimensionDirection; // +1 for up, -1 for down.
+  Boolean justClicked = false;
+  int clickedFrames = 0;
+  Boolean columnSelected = false;
+  int selectedColumn;
   
   // View paramaters
   float draw_width;
@@ -25,6 +29,7 @@ class Graph {
   Boolean bboxStart = false;
   Point bboxStartPoint;
   Set<Line> bbox;
+  Set<Line> selectedLines;
   
   ArrayList<Set<Line>> lineSets; //By column
   ArrayList<Set<Line>> lineGroups; // By Row
@@ -46,28 +51,30 @@ class Graph {
   void onMouseReleased() {
     
     if (bboxStart) {
+        selectedLines = new HashSet<Line>();
         Set<Line> bbox = new HashSet<Line>();
         float lx = bboxStartPoint.x;
         float ly = bboxStartPoint.y;
         float mousex = mouseX;
         if (mousex == lx) {
-           mousex ++; 
+           mousex ++;
         }
         
         bbox.add(new Line(new Point(lx, ly) , new Point(mousex, ly)));
         bbox.add(new Line(new Point(mousex, ly) , new Point(mousex+1, mouseY)));
         bbox.add(new Line(new Point(mousex+1, mouseY) , new Point(lx+1, mouseY)));
         bbox.add(new Line(new Point(lx+1, mouseY) , new Point(lx, ly)));
-        Set<Line> result = highlightSelection(lineSets, bbox);
-  
         
-        stroke(color(255, 0, 0));
-        for (Line l : result) {
-          DrawLine(l);
-      }
+        Set<Line> result = highlightSelection(lineSets, bbox);
+        for(Line l : result) {
+           Set<Line> group = lineGroups.get(l.row);
+           selectedLines.addAll(group);
+        }
     }
  
     bboxStart = false;
+    justClicked = true;
+    columnSelected = false;
      
   }
   
@@ -120,16 +127,32 @@ class Graph {
      float roundedMax = ((ceil(MaxForColumn(i-1))+9)/10)*10;
      String maxTitle = String.format("%.02f", roundedMax);
      String columnTitle = GetColumnTitle(i-1); 
+     
       
      float axis_x = l_x() + hor_tick*i;
      text(maxTitle, axis_x - maxTitle.length()/2 * PIXELWIDTH_PER_CHAR, t_y() - padding);
-     text(columnTitle, axis_x - columnTitle.length()/2 * PIXELWIDTH_PER_CHAR, t_y());
-     
+     //rect(x, y, PIXELWIDTH_PER_CHAR * text.length() + padding, PIXELHEIGHT_PER_CHAR + padding);
+     if (justClicked) {
+       if(mouseX > axis_x - columnTitle.length()/2 * PIXELWIDTH_PER_CHAR - padding &&
+           mouseX < axis_x + columnTitle.length()/2 * PIXELWIDTH_PER_CHAR + padding &&
+            mouseY > t_y() &&
+             mouseY < t_y() + padding ) {
+         columnSelected = true;
+         selectedColumn = i-1;
+       }
+     }
+     if (columnSelected && selectedColumn == i-1) {
+       fill(0, 0, 255);
+     } else {
+       fill(0,0,0);
+     }
+     DrawTextBox(axis_x - columnTitle.length()/2 * PIXELWIDTH_PER_CHAR - padding, t_y(), columnTitle);
+     fill(0,0,0);
      // y tick marks 
      for (int j = 1; j <= 10; j++) {
        float tenths =(roundedMax/10.0);
        String tenthTitle = Float.toString(roundedMax - tenths*j);
-       float text_x = axis_x -padding;
+       float text_x = axis_x ;
        float text_y;
        if (DimensionDirection[i-1] > 0) {
           text_y = top_y  + vert_tick*j + tenthTitle.length()/2 * PIXELWIDTH_PER_CHAR;
@@ -161,10 +184,11 @@ class Graph {
   }
   
   void DrawTextBox(float x, float y, String text) {
-      rect(x, y, PIXELWIDTH_PER_CHAR * text.length() + padding, PIXELHEIGHT_PER_CHAR + padding);
+      rect(x, y, PIXELWIDTH_PER_CHAR * text.length() + padding/2, PIXELHEIGHT_PER_CHAR + padding);
       fill(255,255,255);
-      text(text, x + padding/2, y + padding);
+      text(text, x + (PIXELWIDTH_PER_CHAR * text.length() + padding/2)/2, y + PIXELHEIGHT_PER_CHAR + padding/2);
   }
+  
   
   void DrawHover() {
     Point mouse = new Point(mouseX, mouseY);
@@ -202,14 +226,39 @@ class Graph {
   } 
 
   void DrawDimensionFlip() {
+    
+       strokeWeight(1);
       for (int i = 1; i <= NumColumns(); i++) {
        float axis_x = l_x() + h_tick()*i;
        fill(0,0,255);
        rect(axis_x - padding/2, b_y(), padding, padding);
-       fill(0,0,0);
-       DrawArrow(axis_x, b_y() + padding, axis_x, b_y());
+       if (justClicked) {
+         if (mouseX > axis_x - padding/2 && mouseX < axis_x + padding/2 && mouseY > b_y() && mouseY < b_y() + padding) {
+           DimensionDirection[i-1] *= -1;  
+           LoadLines();
+         }
+       }
+       stroke(0,0,0);
+       if (DimensionDirection[i-1] > 0) {
+         DrawArrow(axis_x, b_y() + padding, axis_x, b_y());
+       } else {
+         DrawArrow(axis_x, b_y(), axis_x, b_y()+padding);
+       }
+       
       }
   }
+  
+  void DrawSelectedLines() {
+    if (selectedLines == null) {
+      return;  
+    }
+    for(Line l : selectedLines) {
+      stroke(255,255,0);
+      strokeWeight(3);
+      DrawLine(l);
+    }
+  }
+  
   
   void Draw() {
     DrawLines();
@@ -217,6 +266,10 @@ class Graph {
     DrawBBox();
     DrawHover();
     DrawDimensionFlip();
+    DrawSelectedLines();
+ 
+    justClicked = false;
+    
   }
     
   // Table Functions
@@ -261,7 +314,7 @@ class Graph {
          
          float x1 = l_x() + h_tick() * (i+1);
          float y1;
-         if (DimensionDirection[i-1] > 0) {
+         if (DimensionDirection[i] > 0) {
            y1 = b_y() - (b_y() - top_y) * (value1/roundedMax1);
          } else {
            y1 = t_y() + (b_y() - top_y) * (value1/roundedMax1);
@@ -304,6 +357,16 @@ class Graph {
     return maxValue;   
   }
   
+  float MinForColumn(int index) {
+    
+    float minValue = Float.POSITIVE_INFINITY;
+    for (TableRow row : table.rows()) {  
+      String columnTitle = row.getColumnTitle(index);
+      minValue = max(minValue, row.getFloat(columnTitle));
+    }
+    return minValue;   
+  }
+  
   // NumColumns returns the number of data columns (n-1)
   int NumColumns() {
      return table.getColumnCount() - 1;
@@ -338,6 +401,8 @@ Graph graph;
 void setup() {
  size(800, 900);
  frameRate(30);
+ textSize(PIXELWIDTH_PER_CHAR);
+ textAlign(CENTER, BOTTOM);
  Table table = loadTable("auto-mpg.csv", "header");
  
  graph = new Graph(table);
@@ -530,8 +595,8 @@ Set<Line> highlightSelection(List<Set<Line>> lines, Set<Line> bbox) {
   
   //Filter results
   for (PrimalDualData intersection : intersection_to_line.keySet()) {
-    if (intersection.point.x >= minX && intersection.point.x <= maxX &&
-        intersection.point.y >= minY && intersection.point.y <= maxY) {
+    if (-intersection.point.x >= minX && -intersection.point.x <= maxX &&
+        -intersection.point.y >= minY && -intersection.point.y <= maxY) {
       result_intersections.add(intersection);
     }
   }
@@ -557,3 +622,24 @@ Map<PrimalDualData, PrimalDualData> getIntersectionFromDualPoints(Set<PrimalDual
   }
   return intersection_to_line;
 }
+
+/*
+ void DrawLabel() {
+    float hor_tick = (r_x() - l_x())/(numRows/8);
+    int i = 0;
+    for (TableRow row : table.rows()) {
+      color red = color(255, 0, 0);
+      color yellow = color(255, 255, 0);
+      strokeWeight(5);
+      
+      float axis_x = l_x() + hor_tick*(i/3) + hor_tick/2 * (i%2);
+      float axis_y = b_y() + 2*padding + PIXELHEIGHT_PER_CHAR*(i%8);
+      
+      String columnTitle = GetColumnTitle(NumColumns());
+      String name = row.getString(columnTitle);
+      
+      text(name, axis_x, axis_y);
+      i++;
+    }
+  }
+ */
