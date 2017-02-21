@@ -7,6 +7,8 @@ import java.util.HashMap;
 
 final float PIXELWIDTH_PER_CHAR = 12;
 final float PIXELHEIGHT_PER_CHAR = 12;
+final int Y_AXIS = 1;
+final int X_AXIS = 2;
 List<Float> bucketPos;
 class Graph {
   
@@ -17,6 +19,9 @@ class Graph {
   int clickedFrames = 0;
   Boolean columnSelected = false;
   int selectedColumn;
+  
+  color red = color(255, 0, 0);
+  color yellow = color(255, 255, 0);
   
   // View paramaters
   float draw_width;
@@ -112,7 +117,17 @@ class Graph {
    
    for (int i = 1; i <= NumColumns(); i++) {
      float axis_x = l_x() + hor_tick*i;
-     line(axis_x, b_y(), axis_x, top_y);    
+     strokeWeight(2);
+     fill(200,200,200,100);
+     rect(axis_x, top_y, 6, (b_y() - top_y));
+     fill(255,255,255,100);
+     rect(axis_x, top_y, 6, (b_y() - top_y));
+     if (columnSelected && selectedColumn == i-1) {
+       setGradient(axis_x, top_y, 6, (b_y()-top_y), red, yellow, Y_AXIS); 
+     }
+     stroke(0,0,0);
+     
+     
      
      // y tick marks for every line
      for (int j = 1; j <= 10; j++) {
@@ -146,7 +161,9 @@ class Graph {
      } else {
        fill(0,0,0);
      }
-     DrawTextBox(axis_x - columnTitle.length()/2 * PIXELWIDTH_PER_CHAR - padding, t_y(), columnTitle);
+     float title_x = axis_x - (PIXELWIDTH_PER_CHAR * columnTitle.length() + padding)/2 + 3;
+     float title_y = t_y();
+     DrawTextBox(title_x, title_y, columnTitle);
      fill(0,0,0);
      // y tick marks 
      for (int j = 1; j <= 10; j++) {
@@ -173,11 +190,19 @@ class Graph {
   }
   
   void DrawLines() {
-    color red = color(255, 0, 0);
-    color yellow = color(255, 255, 0);
     strokeWeight(1);
       for (Line l : allLines) {
-        stroke(lerpColor(red, yellow, float(l.row)/numRows));
+        if (!columnSelected) {   
+          stroke(lerpColor(red, yellow, float(l.row)/numRows)); 
+        } else {
+          String columnTitle = GetColumnTitle(selectedColumn);
+          TableRow row = table.getRow(l.row);
+          float value = row.getFloat(columnTitle);
+          
+          float rounded_Max = ((ceil(MaxForColumn(selectedColumn))+9)/10)*10;
+          stroke(lerpColor(red, yellow, value/rounded_Max));
+          
+        }
          DrawLine(l);
       }
     
@@ -396,6 +421,30 @@ class Graph {
     return draw_y + draw_height - padding; 
   }
 }  
+// From https://processing.org/examples/lineargradient.html
+void setGradient(float x, float y, float w, float h, color c1, color c2, int axis ) {
+
+  noFill();
+
+  if (axis == Y_AXIS) {  // Top to bottom gradient
+    for (float i = y; i <= y+h; i++) {
+      float inter = map(i, y, y+h, 0, 1);
+      color c = lerpColor(c1, c2, inter);
+      stroke(c);
+      line(x, i, x+w, i);
+    }
+  }  
+  else if (axis == X_AXIS) {  // Left to right gradient
+    for (float i = x; i <= x+w; i++) {
+      float inter = map(i, x, x+w, 0, 1);
+      color c = lerpColor(c1, c2, inter);
+      stroke(c);
+      line(i, y, i, y+h);
+    }
+  }
+}
+
+
 
 Graph graph;
 void setup() {
