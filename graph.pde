@@ -592,7 +592,7 @@ Set<Line> highlightSelection(List<Set<Line>> lines, Set<Line> bbox) {
   
   //Find intersections
   intersection_to_line = getIntersectionFromDualPoints(processed_lines, processed_bbox);
-  
+
   //Filter results
   for (PrimalDualData intersection : intersection_to_line.keySet()) {
     if (-intersection.point.x >= minX && -intersection.point.x <= maxX &&
