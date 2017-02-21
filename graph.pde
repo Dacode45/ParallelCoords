@@ -527,11 +527,12 @@ Set<Line> highlightSelection(List<Set<Line>> lines, Set<Line> bbox) {
   
   //Find intersections
   intersection_to_line = getIntersectionFromDualPoints(processed_lines, processed_bbox);
-  
+
   //Filter results
   for (PrimalDualData intersection : intersection_to_line.keySet()) {
-    if (intersection.point.x >= minX && intersection.point.x <= maxX &&
-        intersection.point.y >= minY && intersection.point.y <= maxY) {
+    println(intersection.point.x + "," + intersection.point.y);
+    if (-intersection.point.x >= minX && -intersection.point.x <= maxX &&
+        -intersection.point.y >= minY && -intersection.point.y <= maxY) {
       result_intersections.add(intersection);
     }
   }
