@@ -362,6 +362,7 @@ class Graph {
          j++;
       }
     }
+    bucketPos.add(l_x() + h_tick() * NumColumns());
   }
 
   void LoadTable(Table t) {
@@ -599,6 +600,51 @@ void setup2() {
 }
 
 Set<Line> highlightSelection(List<Set<Line>> lines, Set<Line> bbox) {
+  Set<Line> result = new HashSet<Line>();
+  
+  float minX = Float.MAX_VALUE;
+  float maxX = Float.MIN_VALUE;
+  float minY = Float.MAX_VALUE;
+  float maxY = Float.MIN_VALUE;
+  
+  //Get bbox boundaries
+  for (Line line : bbox) {
+    minX = min(minX, line.lpoint.x);
+    maxX = max(maxX, line.rpoint.x);
+    minY = min(minY, line.lpoint.y);
+    maxY = max(maxY, line.rpoint.y);
+  }
+  
+  //Get buckets that contain lines of interest
+  int minBucket = 0;
+  int maxBucket = -1;
+  
+  for (int i = 0; i < bucketPos.size(); i++) {
+    if (minX > bucketPos.get(i)) {
+      minBucket = i;
+    }
+    if (bucketPos.get(i) < maxX) {
+      maxBucket = i;
+    }
+  }
+  
+  maxBucket = min(bucketPos.size()-2, maxBucket);
+  
+  //If statement accounts for edge cases
+    //Split bbox on the bucket positions
+    for (int i = minBucket; i < maxBucket + 1; i++) {
+      Set<Line> local_bbox = new HashSet<Line>();
+      local_bbox.add(new Line(new Point(max(bucketPos.get(i), minX), minY), new Point(min(bucketPos.get(i+1), maxX), minY)));
+      local_bbox.add(new Line(new Point(max(bucketPos.get(i), minX), maxY), new Point(min(bucketPos.get(i+1), maxX), maxY)));
+      local_bbox.add(new Line(new Point(max(bucketPos.get(i), minX), minY), new Point(min(bucketPos.get(i+1), maxX)+1, maxY)));
+      local_bbox.add(new Line(new Point(max(bucketPos.get(i), minX), minY), new Point(min(bucketPos.get(i+1), maxX)+1, maxY)));
+      result.addAll(highlightSelectionHelper(lines, local_bbox, i));
+    }
+  
+  return result;
+}
+
+Set<Line> highlightSelectionHelper(List<Set<Line>> lines, Set<Line> bbox, int bucket) {
   //Initialize variables
   Set<Line> result = new HashSet<Line>();
   
@@ -621,23 +667,9 @@ Set<Line> highlightSelection(List<Set<Line>> lines, Set<Line> bbox) {
     maxY = max(maxY, line.rpoint.y);
   }
   
-  //Get buckets that contain lines of interest
-  int minBucket = 0;
-  int maxBucket = 0;
-  for (int i = 0; i < bucketPos.size(); i++) {
-    if (minX > bucketPos.get(i)) {
-      minBucket = i;
-    }
-    if (bucketPos.get(i) < maxX) {
-      maxBucket = i;
-    }
-  }
-  
   //Get dual plane data
-  for (int i = minBucket; i < maxBucket + 1; i++) {
-    for (Line line : lines.get(i)) {
-      processed_lines.add(new PrimalDualData(line));
-    }
+  for (Line line : lines.get(bucket)) {
+    processed_lines.add(new PrimalDualData(line));
   }
   
   for (Line line : bbox) {
